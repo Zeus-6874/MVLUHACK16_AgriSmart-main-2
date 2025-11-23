@@ -1,0 +1,27 @@
+[
+  {
+    "reference_id": "CROPSAP-2024-001",
+    "district": "Pune",
+    "taluka": "Baramati",
+    "village": "Malegaon",
+    "crop": "Pomegranate",
+    "pest": "Fruit Borer",
+    "severity": "High",
+    "advisory": "Spray Spinosad 45% SC @ 0.3 ml/l once and repeat after 10 days. Remove infested fruits.",
+    "reported_on": "2024-11-20",
+    "source_url": "https://cropsap.maharashtra.gov.in/"
+  },
+  {
+    "reference_id": "CROPSAP-2024-002",
+    "district": "Nagpur",
+    "taluka": "Katol",
+    "village": "Kalmeshwar",
+    "crop": "Cotton",
+    "pest": "Pink Bollworm",
+    "severity": "Medium",
+    "advisory": "Install pheromone traps @ 8/acre. Spray Emamectin benzoate 5% SG @ 0.4 g/l.",
+    "reported_on": "2024-11-18",
+    "source_url": "https://cropsap.maharashtra.gov.in/"
+  }
+]
+

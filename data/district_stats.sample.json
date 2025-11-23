@@ -1,0 +1,35 @@
+[
+  {
+    "district": "Pune",
+    "taluka": "Baramati",
+    "season": "2019-20",
+    "crop": "Sugarcane",
+    "area_ha": 61250,
+    "production_mt": 4950000,
+    "yield_mt_per_ha": 80.8,
+    "rainfall_mm": 735,
+    "irrigation_coverage_percent": 78,
+    "horticulture_area_ha": 12000,
+    "medicinal_plants_area_ha": 520,
+    "source": "Maharashtra State Data Bank",
+    "recorded_year": 2020
+  },
+  {
+    "district": "Nagpur",
+    "taluka": "Katol",
+    "season": "2019-20",
+    "crop": "Cotton",
+    "area_ha": 48500,
+    "production_mt": 101000,
+    "yield_mt_per_ha": 20.8,
+    "rainfall_mm": 960,
+    "irrigation_coverage_percent": 38,
+    "horticulture_area_ha": 8200,
+    "medicinal_plants_area_ha": 180,
+    "source": "Maharashtra State Data Bank",
+    "recorded_year": 2020
+  }
+]
+
+
+

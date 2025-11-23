@@ -1,0 +1,45 @@
+[
+  {
+    "name": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)",
+    "name_local": "प्रधानमंत्री किसान सम्मान निधि",
+    "category": "Income Support",
+    "state": "All India",
+    "department": "Ministry of Agriculture & Farmers Welfare",
+    "description": "Direct income support of ₹6,000 per year to small and marginal farmers, paid in three equal installments.",
+    "eligibility": "All landholding farmer families with cultivable land up to 2 hectares. Institutional land holders and income tax payees are excluded.",
+    "benefits": "₹2,000 transferred directly into beneficiary bank accounts every four months (April-July, August-November, December-March).",
+    "subsidy_details": "Central Sector Scheme fully funded by Government of India. Beneficiaries must complete e-KYC.",
+    "application_process": "Register via PM-KISAN portal (pmkisan.gov.in), Common Service Centres (CSCs), or local agriculture offices.",
+    "official_url": "https://pmkisan.gov.in/",
+    "contact_info": "PM-Kisan Helpline: 155261 / 011-24300606"
+  },
+  {
+    "name": "Mahadbt - Horticulture Crop Insurance",
+    "name_local": "महा DBT फलोत्पादन विमा योजना",
+    "category": "Crop Insurance",
+    "state": "Maharashtra",
+    "department": "Maharashtra Directorate of Horticulture",
+    "description": "Insurance coverage for horticulture farmers against natural calamities, pests, and diseases for notified crops.",
+    "eligibility": "Horticulture farmers in Maharashtra growing notified crops (mango, pomegranate, citrus, etc.) and enrolled on MahaDBT.",
+    "benefits": "Premium subsidy up to 75% depending on crop category. Compensation based on crop loss assessment.",
+    "subsidy_details": "State funded subsidy credited via MahaDBT. Balance premium payable by farmer.",
+    "application_process": "Apply on https://mahadbt.maharashtra.gov.in/ with land records, crop details, and bank account information.",
+    "official_url": "https://mahadbt.maharashtra.gov.in/",
+    "contact_info": "Directorate of Horticulture, Pune: 1800-120-8040"
+  },
+  {
+    "name": "National Mission on Medicinal Plants - Maharashtra",
+    "name_local": "राष्ट्रीय औषधी वनस्पती अभियान",
+    "category": "Medicinal & Aromatic Crops",
+    "state": "Maharashtra",
+    "department": "Maharashtra State Horticulture & Medicinal Plant Board",
+    "description": "Financial assistance for cultivation, post-harvest management, and marketing of medicinal plants.",
+    "eligibility": "Farmers, SHGs, and cooperatives cultivating approved medicinal plants with minimum 0.1 ha area.",
+    "benefits": "Up to ₹40,000/ha for cultivation, 50% subsidy for shade nets, nurseries, and post-harvest infrastructure.",
+    "subsidy_details": "Cost norms as per National AYUSH Mission. Subsidy released in installments after field verification.",
+    "application_process": "Submit proposal to District Horticulture Office or apply via Maharashtra SHMPB portal.",
+    "official_url": "https://www.msamb.com/english/Medicinal-Plants",
+    "contact_info": "Maharashtra State Horticulture & Medicinal Plant Board, Pune – 020-24529184"
+  }
+]
+
