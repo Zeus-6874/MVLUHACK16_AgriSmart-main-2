@@ -359,6 +359,11 @@ ALTER TABLE public.sensor_readings ENABLE ROW LEVEL SECURITY;
 -- Farmer-specific policies
 CREATE POLICY IF NOT EXISTS "farmers_own_profiles" ON public.farmer_profiles FOR ALL USING (auth.uid()::text = user_id);
 
+-- Admin access policies for farmers table
+CREATE POLICY IF NOT EXISTS "farmers_select_own" ON public.farmers FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY IF NOT EXISTS "farmers_insert_own" ON public.farmers FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY IF NOT EXISTS "farmers_update_own" ON public.farmers FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
+
 CREATE POLICY IF NOT EXISTS "farmers_own_soil_analysis" ON public.soil_analysis FOR ALL USING (
   EXISTS (
     SELECT 1 FROM public.farmer_profiles
