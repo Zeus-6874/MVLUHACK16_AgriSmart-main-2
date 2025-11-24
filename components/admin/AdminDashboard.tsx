@@ -80,12 +80,15 @@ interface DiseaseReport {
 
 interface MarketPrice {
   id: string
-  crop_name: string
+  commodity: string
+  commodity_hi?: string
   market_name: string
-  price_per_kg: number
-  date: string
-  state?: string
+  state: string
   district?: string
+  arrival_date: string
+  min_price?: number
+  max_price?: number
+  modal_price: number
 }
 
 export default function AdminDashboard({ user }: AdminDashboardProps) {
