@@ -170,7 +170,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         supabase.from("farmers").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("encyclopedia").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("disease_reports").select("*").order("reported_date", { ascending: false }).limit(50),
-        supabase.from("market_prices").select("*").order("date", { ascending: false }).limit(50),
+        supabase.from("market_prices").select("*").order("arrival_date", { ascending: false }).limit(50),
       ])
 
       if (farmersData.data) setFarmers(farmersData.data)
