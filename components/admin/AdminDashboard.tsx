@@ -986,9 +986,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{language === "hi" ? "फसल" : "Crop"}</TableHead>
+                        <TableHead>{language === "hi" ? "फसल" : "Commodity"}</TableHead>
                         <TableHead>{language === "hi" ? "बाजार" : "Market"}</TableHead>
-                        <TableHead>{language === "hi" ? "मूल्य (₹/किलो)" : "Price (₹/kg)"}</TableHead>
+                        <TableHead>{language === "hi" ? "मूल्य रेंज (₹)" : "Price Range (₹)"}</TableHead>
                         <TableHead>{language === "hi" ? "स्थान" : "Location"}</TableHead>
                         <TableHead>{language === "hi" ? "तारीख" : "Date"}</TableHead>
                         <TableHead>{language === "hi" ? "कार्य" : "Actions"}</TableHead>
@@ -997,17 +997,20 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                     <TableBody>
                       {marketPrices.slice(0, 10).map((price) => (
                         <TableRow key={price.id}>
-                          <TableCell className="font-medium">{price.crop_name}</TableCell>
+                          <TableCell className="font-medium">{price.commodity}</TableCell>
                           <TableCell>{price.market_name}</TableCell>
                           <TableCell className="font-semibold text-green-600">
-                            ₹{price.price_per_kg.toFixed(2)}
+                            {price.min_price && price.max_price ?
+                              `₹${price.min_price.toFixed(0)}-${price.max_price.toFixed(0)}` :
+                              `₹${price.modal_price.toFixed(0)}`
+                            }
                           </TableCell>
                           <TableCell>
                             {price.district && price.state
                               ? `${price.district}, ${price.state}`
-                              : price.state || price.district || "-"}
+                              : price.state || "-"}
                           </TableCell>
-                          <TableCell>{new Date(price.date).toLocaleDateString()}</TableCell>
+                          <TableCell>{new Date(price.arrival_date).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button variant="ghost" size="sm">
