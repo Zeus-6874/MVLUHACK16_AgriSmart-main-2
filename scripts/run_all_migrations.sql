@@ -25,6 +25,17 @@ CREATE TABLE IF NOT EXISTS farmer_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Legacy farmers table for admin compatibility
+CREATE TABLE IF NOT EXISTS farmers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT,
+  location TEXT,
+  farm_size NUMERIC,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ============================================
 -- 2. Core Agricultural Data Tables
 -- ============================================
