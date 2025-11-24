@@ -1,5 +1,5 @@
 -- ====================================================================
--- AgriSmart V2: Fresh PostgreSQL Database Schema
+-- AgriSmart V2: Fresh PostgreSQL Database Schema (COMPLETE)
 -- ====================================================================
 -- This script creates a new, optimized database from scratch.
 -- It is idempotent and can be run on a new or existing database.
@@ -26,7 +26,7 @@ DROP VIEW IF EXISTS farmer_dashboard_summary, market_price_trends, seasonal_crop
 DROP TABLE IF EXISTS
     sensor_readings, iot_sensors, field_activities, crop_cycles, fields, soil_analysis,
     disease_reports, market_prices, schemes, encyclopedia, weather_data,
-    cropsap_alerts, district_statistics, scheme_categories, crop_categories, farmers, farmer_profiles
+    cropsap_alerts, district_statistics, scheme_categories, crop_categories, farmer_profiles
 CASCADE;
 DROP SEQUENCE IF EXISTS field_code_seq CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at_column, generate_farmer_code, get_crop_season, calculate_soil_health_score CASCADE;
@@ -55,7 +55,7 @@ CREATE TYPE season_enum AS ENUM ('kharif', 'rabi', 'zaid', 'summer', 'winter', '
 
 -- DOMAIN Types for validation
 CREATE DOMAIN positive_decimal AS NUMERIC CHECK (VALUE > 0);
-CREATE DOMAIN phone_number AS VARCHAR(20) CHECK (VALUE ~ '^[+]?[0-9\s\-\(\)]{10,20}$');
+CREATE DOMAIN phone_number AS VARCHAR(20) CHECK (VALUE ~ '^[+]?[0-9\s\-\(\)]{10,20}$' OR VALUE IS NULL);
 CREATE DOMAIN email_address AS VARCHAR(255) CHECK (VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
 CREATE DOMAIN land_size_hectares AS NUMERIC(8,2) CHECK (VALUE >= 0.01 AND VALUE <= 10000);
 
@@ -67,7 +67,7 @@ CREATE DOMAIN land_size_hectares AS NUMERIC(8,2) CHECK (VALUE >= 0.01 AND VALUE 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
+    NEW.updated_at = timezone('utc', now());
     RETURN NEW;
 END;
 $$ language 'plpgsql';
@@ -75,15 +75,14 @@ $$ language 'plpgsql';
 -- Function to calculate soil health score
 CREATE OR REPLACE FUNCTION calculate_soil_health_score(ph NUMERIC, nitrogen NUMERIC, phosphorus NUMERIC, potassium NUMERIC, organic_matter NUMERIC)
 RETURNS NUMERIC AS $$
-DECLARE
-    ph_score NUMERIC := 0;
-    nutrient_score NUMERIC := 0;
-    organic_score NUMERIC := 0;
 BEGIN
-    IF ph >= 6.0 AND ph <= 7.5 THEN ph_score := 40; ELSE ph_score := 10; END IF;
-    nutrient_score := LEAST( CASE WHEN nitrogen >= 200 AND nitrogen <= 400 THEN 20 ELSE 10 END, CASE WHEN phosphorus >= 20 AND phosphorus <= 60 THEN 20 ELSE 10 END, CASE WHEN potassium >= 150 AND potassium <= 300 THEN 20 ELSE 10 END );
-    IF organic_matter >= 2.0 THEN organic_score := 20; ELSIF organic_matter >= 1.0 THEN organic_score := 15; ELSE organic_score := 5; END IF;
-    RETURN ph_score + nutrient_score + organic_score;
+    RETURN CASE WHEN ph >= 6.0 AND ph <= 7.5 THEN 40 ELSE 10 END +
+           LEAST(
+               CASE WHEN nitrogen >= 200 AND nitrogen <= 400 THEN 20 ELSE 10 END,
+               CASE WHEN phosphorus >= 20 AND phosphorus <= 60 THEN 20 ELSE 10 END,
+               CASE WHEN potassium >= 150 AND potassium <= 300 THEN 20 ELSE 10 END
+           ) +
+           CASE WHEN organic_matter >= 2.0 THEN 20 WHEN organic_matter >= 1.0 THEN 15 ELSE 5 END;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -106,12 +105,12 @@ CREATE TABLE fields (
     farmer_id UUID NOT NULL REFERENCES farmer_profiles(id) ON DELETE CASCADE,
     field_name TEXT NOT NULL,
     area_hectares land_size_hectares,
+    area_acres NUMERIC(8,2) GENERATED ALWAYS AS (area_hectares * 2.47105) STORED,
     soil_type soil_type_enum,
     irrigation_method irrigation_type_enum,
-    -- Using PostGIS GEOGRAPHY type for location data is recommended if PostGIS is enabled
-    -- coordinates GEOGRAPHY(POINT, 4326),
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
+    boundary_polygon JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
 );
@@ -124,6 +123,25 @@ CREATE TABLE crop_cycles (
     expected_harvest_date DATE GENERATED ALWAYS AS (planting_date + INTERVAL '120 days') STORED,
     status crop_status_enum DEFAULT 'planning',
     season season_enum,
+    actual_yield NUMERIC(8,2),
+    input_cost NUMERIC(10,2),
+    revenue NUMERIC(10,2),
+    profit_margin NUMERIC(5,2) GENERATED ALWAYS AS (CASE WHEN input_cost > 0 THEN ((revenue - input_cost) / input_cost * 100) ELSE NULL END) STORED,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
+);
+
+CREATE TABLE soil_analysis (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    field_id UUID NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+    sample_date DATE NOT NULL,
+    ph_level DECIMAL(4,2) CHECK (ph_level > 0 AND ph_level < 14),
+    nitrogen NUMERIC(6,2),
+    phosphorus NUMERIC(6,2),
+    potassium NUMERIC(6,2),
+    organic_matter NUMERIC(5,2) CHECK (organic_matter >= 0),
+    health_score NUMERIC(5,2) GENERATED ALWAYS AS (calculate_soil_health_score(ph_level, nitrogen, phosphorus, potassium, organic_matter)) STORED,
+    recommendations JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
 );
@@ -143,34 +161,34 @@ CREATE TABLE encyclopedia (
     crop_name TEXT NOT NULL UNIQUE,
     description TEXT,
     planting_season season_enum,
-    fertilizer_needs JSONB
+    fertilizer_needs JSONB,
+    common_diseases TEXT[],
+    image_url TEXT
 );
 
--- ... other tables like schemes, soil_analysis etc. would go here ...
+CREATE TABLE schemes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    eligibility TEXT[],
+    benefits JSONB,
+    is_active BOOLEAN DEFAULT TRUE
+);
 
 -- ============================================
 -- 6. Indexes for Performance
 -- ============================================
 
--- Farmer profiles
 CREATE INDEX ON farmer_profiles(user_id);
-
--- Fields
 CREATE INDEX ON fields(farmer_id);
-CREATE INDEX ON fields(soil_type);
 CREATE INDEX ON fields USING gist(latitude, longitude) WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
-
--- Crop cycles
 CREATE INDEX ON crop_cycles(field_id);
 CREATE INDEX ON crop_cycles(status);
-CREATE INDEX ON crop_cycles(planting_date DESC);
-
--- Market prices
+CREATE INDEX ON soil_analysis(field_id);
 CREATE INDEX ON market_prices(commodity, state, arrival_date DESC);
 CREATE INDEX ON market_prices USING gin(commodity gin_trgm_ops);
-
--- Encyclopedia
 CREATE INDEX ON encyclopedia USING gin(crop_name gin_trgm_ops);
+CREATE INDEX ON schemes USING gin(name gin_trgm_ops);
 
 -- ============================================
 -- 7. Row Level Security (RLS)
@@ -180,10 +198,13 @@ ALTER TABLE farmer_profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage their own profile" ON farmer_profiles FOR ALL USING (auth.uid() = user_id);
 
 ALTER TABLE fields ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage their own fields" ON fields FOR ALL USING ((SELECT auth.uid() FROM farmer_profiles WHERE id = farmer_id) = auth.uid());
+CREATE POLICY "Users can manage their own fields" ON fields FOR ALL USING ((SELECT user_id FROM farmer_profiles WHERE id = farmer_id) = auth.uid());
 
 ALTER TABLE crop_cycles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage their own crop cycles" ON crop_cycles FOR ALL USING ((SELECT farmer_id FROM fields WHERE id = field_id) IN (SELECT id FROM farmer_profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can manage their own crop cycles" ON crop_cycles FOR ALL USING ((SELECT fp.user_id FROM fields f JOIN farmer_profiles fp ON f.farmer_id = fp.id WHERE f.id = field_id) = auth.uid());
+
+ALTER TABLE soil_analysis ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own soil analysis" ON soil_analysis FOR ALL USING ((SELECT fp.user_id FROM fields f JOIN farmer_profiles fp ON f.farmer_id = fp.id WHERE f.id = field_id) = auth.uid());
 
 -- Public tables
 ALTER TABLE market_prices ENABLE ROW LEVEL SECURITY;
@@ -192,6 +213,9 @@ CREATE POLICY "Market prices are public" ON market_prices FOR SELECT USING (true
 ALTER TABLE encyclopedia ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Encyclopedia is public" ON encyclopedia FOR SELECT USING (true);
 
+ALTER TABLE schemes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Schemes are public" ON schemes FOR SELECT USING (true);
+
 -- ============================================
 -- 8. Triggers for Automation
 -- ============================================
@@ -199,19 +223,41 @@ CREATE POLICY "Encyclopedia is public" ON encyclopedia FOR SELECT USING (true);
 CREATE TRIGGER update_farmer_profiles_updated_at BEFORE UPDATE ON farmer_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_fields_updated_at BEFORE UPDATE ON fields FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_crop_cycles_updated_at BEFORE UPDATE ON crop_cycles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_soil_analysis_updated_at BEFORE UPDATE ON soil_analysis FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- 9. Seed Basic Data
+-- 9. Views for Simplified Queries
 -- ============================================
 
-INSERT INTO encyclopedia (crop_name, description, planting_season)
-VALUES
-    ('Wheat', 'A major cereal crop.', 'rabi'),
-    ('Rice', 'A staple food for a large part of the world's human population.', 'kharif')
+CREATE OR REPLACE VIEW farmer_dashboard_summary AS
+SELECT
+    p.id as farmer_id,
+    p.full_name,
+    p.location,
+    COUNT(f.id) as total_fields,
+    SUM(f.area_hectares) as total_area,
+    (SELECT COUNT(*) FROM crop_cycles WHERE field_id IN (SELECT id FROM fields WHERE farmer_id = p.id) AND status = 'growing') as active_crops
+FROM farmer_profiles p
+LEFT JOIN fields f ON p.id = f.farmer_id
+GROUP BY p.id;
+
+-- ============================================
+-- 10. Seed Basic Data
+-- ============================================
+
+INSERT INTO encyclopedia (crop_name, description, planting_season, fertilizer_needs) VALUES
+    ('Wheat', 'A major cereal crop, grown in temperate climates.', 'rabi', '{"N": 120, "P": 60, "K": 40}'),
+    ('Rice', 'A staple food for over half of the world''s population.', 'kharif', '{"N": 150, "P": 75, "K": 60}'),
+    ('Maize', 'Known as corn, a versatile crop used for food, feed, and fuel.', 'kharif', '{"N": 180, "P": 80, "K": 70}')
 ON CONFLICT (crop_name) DO NOTHING;
 
+INSERT INTO schemes (name, description, eligibility, benefits) VALUES
+    ('PM-KISAN', 'A central sector scheme with 100% funding from Government of India.', '["Small and marginal farmers"]', '{"financial_aid": "Rs. 6,000 per year"}'),
+    ('Soil Health Card', 'A scheme to provide farmers with information on the nutrient status of their soil.', '["All farmers"]', '{"soil_testing": "Free", "recommendations": "Customized"}')
+ON CONFLICT (name) DO NOTHING;
+
 -- ============================================
--- 10. Final Commit
+-- 11. Final Commit
 -- ============================================
 
 COMMIT;
