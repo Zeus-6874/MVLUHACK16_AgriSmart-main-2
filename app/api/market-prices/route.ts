@@ -12,17 +12,11 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("market_prices")
-      .select(`
-        *,
-        crop_varieties (
-          variety_name,
-          quality_grade
-        )
-      `)
-      .order("date", { ascending: false })
+      .select("*")
+      .order("arrival_date", { ascending: false })
 
     if (crop) {
-      query = query.ilike("crop_name", `%${crop}%`)
+      query = query.ilike("commodity", `%${crop}%`)
     }
 
     if (state) {
@@ -36,21 +30,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch market prices" }, { status: 500 })
     }
 
-    // Calculate real trends from price history
+    // Calculate trends from price history
     const processedPrices =
       pricesData?.map((price, index, array) => {
         // Find previous price for same crop to calculate trend
         const previousPrice = array
           .slice(index + 1)
-          .find((p) => p.crop_name === price.crop_name || p.commodity === price.commodity)
-        
+          .find((p) => p.commodity === price.commodity && p.market_name === price.market_name)
+
         let trend = "stable"
         let changePercent = 0
-        
+
         if (previousPrice) {
-          const currentPrice = price.modal_price || price.max_price || price.min_price || 0
-          const prevPrice = previousPrice.modal_price || previousPrice.max_price || previousPrice.min_price || 0
-          
+          const currentPrice = price.modal_price || 0
+          const prevPrice = previousPrice.modal_price || 0
+
           if (prevPrice > 0) {
             changePercent = ((currentPrice - prevPrice) / prevPrice) * 100
             trend = changePercent > 2 ? "up" : changePercent < -2 ? "down" : "stable"
@@ -61,17 +55,17 @@ export async function GET(request: NextRequest) {
           ...price,
           trend,
           change_percent: Number.parseFloat(changePercent.toFixed(1)),
-          change_amount: Math.round((price.modal_price || price.max_price || 0) * (changePercent / 100)),
+          change_amount: Math.round((price.modal_price || 0) * (changePercent / 100)),
         }
       }) || []
 
-    // Group prices by crop for better organization
+    // Group prices by commodity for better organization
     const groupedPrices = processedPrices.reduce((acc: any, price: any) => {
-      const cropName = price.crop_name
-      if (!acc[cropName]) {
-        acc[cropName] = []
+      const commodityName = price.commodity
+      if (!acc[commodityName]) {
+        acc[commodityName] = []
       }
-      acc[cropName].push(price)
+      acc[commodityName].push(price)
       return acc
     }, {})
 
@@ -81,10 +75,10 @@ export async function GET(request: NextRequest) {
       price_decreases: processedPrices.filter((p) => p.trend === "down").length,
       avg_price:
         processedPrices.length > 0
-          ? Math.round(processedPrices.reduce((sum, p) => sum + p.price_per_quintal, 0) / processedPrices.length)
+          ? Math.round(processedPrices.reduce((sum, p) => sum + (p.modal_price || 0), 0) / processedPrices.length)
           : 0,
-      highest_price: processedPrices.length > 0 ? Math.max(...processedPrices.map((p) => p.price_per_quintal)) : 0,
-      lowest_price: processedPrices.length > 0 ? Math.min(...processedPrices.map((p) => p.price_per_quintal)) : 0,
+      highest_price: processedPrices.length > 0 ? Math.max(...processedPrices.map((p) => p.modal_price || 0)) : 0,
+      lowest_price: processedPrices.length > 0 ? Math.min(...processedPrices.map((p) => p.modal_price || 0)) : 0,
     }
 
     return NextResponse.json({
