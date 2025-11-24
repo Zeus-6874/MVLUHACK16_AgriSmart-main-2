@@ -313,6 +313,7 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
 -- ============================================
 
 CREATE INDEX IF NOT EXISTS idx_farmer_profiles_user_id ON public.farmer_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_farmers_user_id ON public.farmers(user_id);
 CREATE INDEX IF NOT EXISTS idx_soil_analysis_farmer_id ON public.soil_analysis(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_disease_reports_farmer_id ON public.disease_reports(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_fields_farmer_id ON public.fields(farmer_id);
