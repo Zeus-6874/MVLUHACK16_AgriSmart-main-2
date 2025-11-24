@@ -252,10 +252,10 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   }
 
   const handleAddMarketPrice = async () => {
-    if (!newMarketPrice.crop_name || !newMarketPrice.market_name || !newMarketPrice.price_per_kg) {
+    if (!newMarketPrice.commodity || !newMarketPrice.market_name || !newMarketPrice.modal_price) {
       toast({
         title: "Error",
-        description: "Crop name, market name, and price are required",
+        description: "Commodity, market name, and modal price are required",
         variant: "destructive",
       })
       return
@@ -264,9 +264,14 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     const supabase = createClient()
     const { error } = await supabase.from("market_prices").insert([
       {
-        ...newMarketPrice,
-        price_per_kg: Number.parseFloat(newMarketPrice.price_per_kg),
-        date: new Date().toISOString().split("T")[0],
+        commodity: newMarketPrice.commodity,
+        market_name: newMarketPrice.market_name,
+        state: newMarketPrice.state || "Unknown",
+        district: newMarketPrice.district || null,
+        modal_price: Number.parseFloat(newMarketPrice.modal_price),
+        min_price: newMarketPrice.min_price ? Number.parseFloat(newMarketPrice.min_price) : null,
+        max_price: newMarketPrice.max_price ? Number.parseFloat(newMarketPrice.max_price) : null,
+        arrival_date: new Date().toISOString().split("T")[0],
       },
     ])
 
@@ -276,12 +281,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         description: "Failed to add market price",
         variant: "destructive",
       })
+      console.error("Market price insert error:", error)
     } else {
       toast({
         title: "Success",
         description: "Market price added successfully",
       })
-      setNewMarketPrice({ crop_name: "", market_name: "", price_per_kg: "", state: "", district: "" })
+      setNewMarketPrice({ commodity: "", market_name: "", modal_price: "", min_price: "", max_price: "", state: "", district: "" })
       fetchAllData()
       fetchDashboardStats()
     }
