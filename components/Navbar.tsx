@@ -20,6 +20,10 @@ export default function Navbar() {
       label: t("nav.dashboard"),
     },
     {
+      href: "/field-management",
+      label: t("nav.fieldManagement"),
+    },
+    {
       href: "/soil-health",
       label: t("nav.soilHealth"),
     },
