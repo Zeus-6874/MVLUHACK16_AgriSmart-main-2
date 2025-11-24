@@ -80,12 +80,15 @@ interface DiseaseReport {
 
 interface MarketPrice {
   id: string
-  crop_name: string
+  commodity: string
+  commodity_hi?: string
   market_name: string
-  price_per_kg: number
-  date: string
-  state?: string
+  state: string
   district?: string
+  arrival_date: string
+  min_price?: number
+  max_price?: number
+  modal_price: number
 }
 
 export default function AdminDashboard({ user }: AdminDashboardProps) {
@@ -118,9 +121,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     harvest_time: "",
   })
   const [newMarketPrice, setNewMarketPrice] = useState({
-    crop_name: "",
+    commodity: "",
     market_name: "",
-    price_per_kg: "",
+    modal_price: "",
+    min_price: "",
+    max_price: "",
     state: "",
     district: "",
   })
@@ -167,7 +172,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         supabase.from("farmers").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("encyclopedia").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("disease_reports").select("*").order("reported_date", { ascending: false }).limit(50),
-        supabase.from("market_prices").select("*").order("date", { ascending: false }).limit(50),
+        supabase.from("market_prices").select("*").order("arrival_date", { ascending: false }).limit(50),
       ])
 
       if (farmersData.data) setFarmers(farmersData.data)
@@ -247,10 +252,10 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   }
 
   const handleAddMarketPrice = async () => {
-    if (!newMarketPrice.crop_name || !newMarketPrice.market_name || !newMarketPrice.price_per_kg) {
+    if (!newMarketPrice.commodity || !newMarketPrice.market_name || !newMarketPrice.modal_price) {
       toast({
         title: "Error",
-        description: "Crop name, market name, and price are required",
+        description: "Commodity, market name, and modal price are required",
         variant: "destructive",
       })
       return
@@ -259,9 +264,14 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     const supabase = createClient()
     const { error } = await supabase.from("market_prices").insert([
       {
-        ...newMarketPrice,
-        price_per_kg: Number.parseFloat(newMarketPrice.price_per_kg),
-        date: new Date().toISOString().split("T")[0],
+        commodity: newMarketPrice.commodity,
+        market_name: newMarketPrice.market_name,
+        state: newMarketPrice.state || "Unknown",
+        district: newMarketPrice.district || null,
+        modal_price: Number.parseFloat(newMarketPrice.modal_price),
+        min_price: newMarketPrice.min_price ? Number.parseFloat(newMarketPrice.min_price) : null,
+        max_price: newMarketPrice.max_price ? Number.parseFloat(newMarketPrice.max_price) : null,
+        arrival_date: new Date().toISOString().split("T")[0],
       },
     ])
 
@@ -271,12 +281,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         description: "Failed to add market price",
         variant: "destructive",
       })
+      console.error("Market price insert error:", error)
     } else {
       toast({
         title: "Success",
         description: "Market price added successfully",
       })
-      setNewMarketPrice({ crop_name: "", market_name: "", price_per_kg: "", state: "", district: "" })
+      setNewMarketPrice({ commodity: "", market_name: "", modal_price: "", min_price: "", max_price: "", state: "", district: "" })
       fetchAllData()
       fetchDashboardStats()
     }
@@ -874,11 +885,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="crop_name">{language === "hi" ? "फसल का नाम" : "Crop Name"} *</Label>
+                              <Label htmlFor="commodity">{language === "hi" ? "फसल का नाम" : "Commodity Name"} *</Label>
                               <Input
-                                id="crop_name"
-                                value={newMarketPrice.crop_name}
-                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, crop_name: e.target.value })}
+                                id="commodity"
+                                value={newMarketPrice.commodity}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, commodity: e.target.value })}
                                 placeholder={language === "hi" ? "जैसे: चावल" : "e.g., Rice"}
                               />
                             </div>
@@ -894,27 +905,57 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                               />
                             </div>
                           </div>
-                          <div>
-                            <Label htmlFor="price_per_kg">
-                              {language === "hi" ? "मूल्य प्रति किलो (₹)" : "Price per Kg (₹)"} *
-                            </Label>
-                            <Input
-                              id="price_per_kg"
-                              type="number"
-                              step="0.01"
-                              value={newMarketPrice.price_per_kg}
-                              onChange={(e) => setNewMarketPrice({ ...newMarketPrice, price_per_kg: e.target.value })}
-                              placeholder="0.00"
-                            />
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <Label htmlFor="min_price">
+                                {language === "hi" ? "न्यूनतम मूल्य (₹)" : "Min Price (₹)"}
+                              </Label>
+                              <Input
+                                id="min_price"
+                                type="number"
+                                step="0.01"
+                                value={newMarketPrice.min_price}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, min_price: e.target.value })}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="modal_price">
+                                {language === "hi" ? "मुख्य मूल्य (₹)" : "Modal Price (₹)"} *
+                              </Label>
+                              <Input
+                                id="modal_price"
+                                type="number"
+                                step="0.01"
+                                value={newMarketPrice.modal_price}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, modal_price: e.target.value })}
+                                placeholder="0.00"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="max_price">
+                                {language === "hi" ? "अधिकतम मूल्य (₹)" : "Max Price (₹)"}
+                              </Label>
+                              <Input
+                                id="max_price"
+                                type="number"
+                                step="0.01"
+                                value={newMarketPrice.max_price}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, max_price: e.target.value })}
+                                placeholder="0.00"
+                              />
+                            </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="state">{language === "hi" ? "राज्य" : "State"}</Label>
+                              <Label htmlFor="state">{language === "hi" ? "राज्य" : "State"} *</Label>
                               <Input
                                 id="state"
                                 value={newMarketPrice.state}
                                 onChange={(e) => setNewMarketPrice({ ...newMarketPrice, state: e.target.value })}
-                                placeholder={language === "hi" ? "जैसे: दिल्ली" : "e.g., Delhi"}
+                                placeholder={language === "hi" ? "जैसे: महाराष्ट्र" : "e.g., Maharashtra"}
+                                required
                               />
                             </div>
                             <div>
@@ -923,7 +964,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                                 id="district"
                                 value={newMarketPrice.district}
                                 onChange={(e) => setNewMarketPrice({ ...newMarketPrice, district: e.target.value })}
-                                placeholder={language === "hi" ? "जैसे: नई दिल्ली" : "e.g., New Delhi"}
+                                placeholder={language === "hi" ? "जैसे: पुणे" : "e.g., Pune"}
                               />
                             </div>
                           </div>
@@ -945,9 +986,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{language === "hi" ? "फसल" : "Crop"}</TableHead>
+                        <TableHead>{language === "hi" ? "फसल" : "Commodity"}</TableHead>
                         <TableHead>{language === "hi" ? "बाजार" : "Market"}</TableHead>
-                        <TableHead>{language === "hi" ? "मूल्य (₹/किलो)" : "Price (₹/kg)"}</TableHead>
+                        <TableHead>{language === "hi" ? "मूल्य रेंज (₹)" : "Price Range (₹)"}</TableHead>
                         <TableHead>{language === "hi" ? "स्थान" : "Location"}</TableHead>
                         <TableHead>{language === "hi" ? "तारीख" : "Date"}</TableHead>
                         <TableHead>{language === "hi" ? "कार्य" : "Actions"}</TableHead>
@@ -956,17 +997,20 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                     <TableBody>
                       {marketPrices.slice(0, 10).map((price) => (
                         <TableRow key={price.id}>
-                          <TableCell className="font-medium">{price.crop_name}</TableCell>
+                          <TableCell className="font-medium">{price.commodity}</TableCell>
                           <TableCell>{price.market_name}</TableCell>
                           <TableCell className="font-semibold text-green-600">
-                            ₹{price.price_per_kg.toFixed(2)}
+                            {price.min_price && price.max_price ?
+                              `₹${price.min_price.toFixed(0)}-${price.max_price.toFixed(0)}` :
+                              `₹${price.modal_price.toFixed(0)}`
+                            }
                           </TableCell>
                           <TableCell>
                             {price.district && price.state
                               ? `${price.district}, ${price.state}`
-                              : price.state || price.district || "-"}
+                              : price.state || "-"}
                           </TableCell>
-                          <TableCell>{new Date(price.date).toLocaleDateString()}</TableCell>
+                          <TableCell>{new Date(price.arrival_date).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button variant="ghost" size="sm">

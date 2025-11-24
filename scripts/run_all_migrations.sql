@@ -1,24 +1,47 @@
--- Complete Database Migration Script
+-- AgriSmart Complete Database Migration Script
 -- Run this entire script in Supabase SQL Editor to set up all tables
--- Make sure to run in order or run this complete script
+-- Execute in Supabase SQL Editor: https://supabase.com/dashboard/project/sql
 
 -- ============================================
--- 1. Base Schema (001_create_database_schema.sql)
+-- Enable required extensions
+-- ============================================
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================
+-- 1. Farmer Profiles (006_create_farmer_profiles.sql)
 -- ============================================
 
--- Create farmers table for user profiles
-CREATE TABLE IF NOT EXISTS public.farmers (
+CREATE TABLE IF NOT EXISTS farmer_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  phone TEXT,
+  user_id TEXT NOT NULL UNIQUE,
+  full_name TEXT NOT NULL,
+  farm_name TEXT,
+  land_size NUMERIC,
+  primary_crop TEXT,
+  irrigation_method TEXT,
   location TEXT,
-  farm_size DECIMAL,
+  contact_number TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create encyclopedia table for crop information
-CREATE TABLE IF NOT EXISTS public.encyclopedia (
+-- Legacy farmers table for admin compatibility
+CREATE TABLE IF NOT EXISTS farmers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT,
+  location TEXT,
+  farm_size NUMERIC,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- 2. Core Agricultural Data Tables
+-- ============================================
+
+-- Encyclopedia table for crop information
+CREATE TABLE IF NOT EXISTS encyclopedia (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crop_name TEXT NOT NULL,
   scientific_name TEXT,
@@ -34,81 +57,80 @@ CREATE TABLE IF NOT EXISTS public.encyclopedia (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create schemes table for government schemes (old structure - will be replaced)
-CREATE TABLE IF NOT EXISTS public.schemes (
+-- Government schemes table
+CREATE TABLE IF NOT EXISTS schemes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scheme_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  name_local TEXT,
   description TEXT,
   eligibility TEXT,
   benefits TEXT,
   application_process TEXT,
   contact_info TEXT,
-  state TEXT,
+  state TEXT DEFAULT 'All India',
   category TEXT,
+  department TEXT,
+  subsidy_details TEXT,
+  official_url TEXT,
   is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create market_prices table (old structure - will be replaced)
-CREATE TABLE IF NOT EXISTS public.market_prices (
+-- Market prices table
+CREATE TABLE IF NOT EXISTS market_prices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  crop_name TEXT NOT NULL,
+  commodity TEXT NOT NULL,
+  commodity_hi TEXT,
   market_name TEXT NOT NULL,
-  price_per_quintal DECIMAL NOT NULL,
-  unit TEXT DEFAULT 'quintal',
-  date DATE NOT NULL,
-  state TEXT,
+  state TEXT NOT NULL,
   district TEXT,
+  arrival_date DATE NOT NULL,
+  min_price NUMERIC,
+  max_price NUMERIC,
+  modal_price NUMERIC,
+  unit TEXT DEFAULT 'quintal',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create crop_varieties table
-CREATE TABLE IF NOT EXISTS public.crop_varieties (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  crop_id UUID REFERENCES public.market_prices(id),
-  variety_name TEXT NOT NULL,
-  quality_grade TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create weather_data table
-CREATE TABLE IF NOT EXISTS public.weather_data (
+-- Weather data table
+CREATE TABLE IF NOT EXISTS weather_data (
   location TEXT NOT NULL,
-  temperature DECIMAL,
-  humidity DECIMAL,
-  rainfall DECIMAL,
-  wind_speed DECIMAL,
+  temperature NUMERIC,
+  humidity NUMERIC,
+  rainfall NUMERIC,
+  wind_speed NUMERIC,
   weather_condition TEXT,
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create soil_analysis table
-CREATE TABLE IF NOT EXISTS public.soil_analysis (
+-- Soil analysis table
+CREATE TABLE IF NOT EXISTS soil_analysis (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  farmer_id UUID REFERENCES public.farmers(id),
-  nitrogen_level DECIMAL NOT NULL,
-  phosphorus_level DECIMAL NOT NULL,
-  potassium_level DECIMAL NOT NULL,
-  ph_level DECIMAL NOT NULL,
-  organic_matter DECIMAL,
+  farmer_id UUID,
+  nitrogen_level NUMERIC NOT NULL,
+  phosphorus_level NUMERIC NOT NULL,
+  potassium_level NUMERIC NOT NULL,
+  ph_level NUMERIC NOT NULL,
+  organic_matter NUMERIC,
   recommendations JSONB,
   suitable_crops TEXT[],
   location TEXT,
   season TEXT,
-  rainfall DECIMAL,
-  temperature DECIMAL,
+  rainfall NUMERIC,
+  temperature NUMERIC,
   analysis_date DATE DEFAULT CURRENT_DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create disease_reports table
-CREATE TABLE IF NOT EXISTS public.disease_reports (
+-- Disease reports table
+CREATE TABLE IF NOT EXISTS disease_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  farmer_id UUID REFERENCES public.farmers(id),
+  farmer_id UUID,
   crop_name TEXT NOT NULL,
   disease_name TEXT,
-  confidence_score DECIMAL,
+  confidence_score NUMERIC,
   image_url TEXT,
   symptoms JSONB,
   treatment_recommendations JSONB,
@@ -117,248 +139,367 @@ CREATE TABLE IF NOT EXISTS public.disease_reports (
 );
 
 -- ============================================
--- 2. Auth Integration (003_update_schema_for_auth.sql)
--- ============================================
-
--- Update farmers table to reference auth.users
-ALTER TABLE public.farmers ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-
--- ============================================
--- 3. Market Data Schema (004_create_market_data_schema.sql)
--- ============================================
-
--- Create market_price_sources table
-CREATE TABLE IF NOT EXISTS market_price_sources (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  description text,
-  source_type text not null default 'agmarknet',
-  source_url text,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now()
-);
-
--- Update market_prices table with new structure
--- Note: This creates a new structure. Old data may need migration.
-CREATE TABLE IF NOT EXISTS market_prices_new (
-  id uuid primary key default gen_random_uuid(),
-  source_id uuid references market_price_sources(id) on delete set null,
-  commodity text not null,
-  commodity_hi text,
-  variety text,
-  market_name text,
-  state text not null,
-  district text,
-  arrival_date date not null,
-  min_price numeric,
-  max_price numeric,
-  modal_price numeric,
-  unit text default 'quintal',
-  created_at timestamptz not null default now(),
-  unique (commodity, market_name, arrival_date)
-);
-
-CREATE TABLE IF NOT EXISTS market_price_history (
-  id uuid primary key default gen_random_uuid(),
-  market_price_id uuid references market_prices_new(id) on delete cascade,
-  fetched_at timestamptz not null default now(),
-  payload jsonb not null
-);
-
-CREATE INDEX IF NOT EXISTS idx_market_prices_state ON market_prices_new(state);
-CREATE INDEX IF NOT EXISTS idx_market_prices_commodity ON market_prices_new(commodity);
-CREATE INDEX IF NOT EXISTS idx_market_prices_arrival_date ON market_prices_new(arrival_date);
-
--- ============================================
--- 4. Knowledge Base Schema (005_create_knowledge_schema.sql) ⚠️ REQUIRED
--- ============================================
-
-CREATE TABLE IF NOT EXISTS scheme_categories (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  description text,
-  created_at timestamptz not null default now()
-);
-
--- Update existing schemes table to new structure
--- Add new columns if they don't exist
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS name text;
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS name_local text;
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS category_id uuid references scheme_categories(id) on delete set null;
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS department text;
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS subsidy_details text;
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS official_url text;
-ALTER TABLE public.schemes ADD COLUMN IF NOT EXISTS last_updated date default current_date;
-
--- Update existing columns to match new structure
--- If scheme_name exists, copy to name
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schemes' AND column_name = 'scheme_name') THEN
-    UPDATE public.schemes SET name = scheme_name WHERE name IS NULL;
-  END IF;
-END $$;
-
--- Rename scheme_name to name if it exists and name doesn't
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schemes' AND column_name = 'scheme_name')
-     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schemes' AND column_name = 'name') THEN
-    ALTER TABLE public.schemes RENAME COLUMN scheme_name TO name;
-  END IF;
-END $$;
-
--- Set default state if not exists
-ALTER TABLE public.schemes ALTER COLUMN state SET DEFAULT 'All India';
-
-CREATE INDEX IF NOT EXISTS idx_schemes_state ON public.schemes(state);
-CREATE INDEX IF NOT EXISTS idx_schemes_category ON public.schemes(category_id);
-
-CREATE TABLE IF NOT EXISTS crop_categories (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  description text
-);
-
-CREATE TABLE IF NOT EXISTS crops (
-  id uuid primary key default gen_random_uuid(),
-  common_name text not null,
-  local_name text,
-  scientific_name text,
-  category_id uuid references crop_categories(id) on delete set null,
-  climate text,
-  soil_type text,
-  optimal_ph_range text,
-  water_requirements text,
-  fertilizer_requirements text,
-  planting_season text,
-  harvest_time text,
-  average_yield text,
-  diseases text[],
-  disease_management text,
-  market_demand text,
-  image_url text,
-  source text,
-  created_at timestamptz not null default now(),
-  unique (common_name, scientific_name)
-);
-
-CREATE TABLE IF NOT EXISTS crop_notes (
-  id uuid primary key default gen_random_uuid(),
-  crop_id uuid references crops(id) on delete cascade,
-  title text not null,
-  content text not null,
-  created_at timestamptz not null default now()
-);
-
--- ============================================
--- 5. Farmer Profiles (006_create_farmer_profiles.sql)
--- ============================================
-
-CREATE TABLE IF NOT EXISTS farmer_profiles (
-  id uuid primary key default gen_random_uuid(),
-  user_id text not null unique,
-  farm_name text,
-  land_size numeric,
-  primary_crop text,
-  irrigation_method text,
-  location text,
-  contact_number text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- ============================================
--- 6. CROPSAP & District Stats (007_create_cropsap_schema.sql)
+-- 3. CROPSAP & District Agricultural Statistics
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS cropsap_alerts (
-  id uuid primary key default gen_random_uuid(),
-  reference_id text,
-  state text not null default 'Maharashtra',
-  district text,
-  taluka text,
-  village text,
-  crop text not null,
-  pest text,
-  disease text,
-  severity text,
-  advisory text,
-  reported_on date,
-  source_url text,
-  created_at timestamptz not null default now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  state TEXT NOT NULL DEFAULT 'Maharashtra',
+  district TEXT,
+  taluka TEXT,
+  village TEXT,
+  crop TEXT NOT NULL,
+  pest TEXT,
+  disease TEXT,
+  severity TEXT,
+  advisory TEXT,
+  reported_on DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
-CREATE INDEX IF NOT EXISTS idx_cropsap_district ON cropsap_alerts(district);
-CREATE INDEX IF NOT EXISTS idx_cropsap_crop ON cropsap_alerts(crop);
 
 CREATE TABLE IF NOT EXISTS district_statistics (
-  id uuid primary key default gen_random_uuid(),
-  state text not null default 'Maharashtra',
-  district text not null,
-  taluka text,
-  season text,
-  crop text,
-  area_ha numeric,
-  production_mt numeric,
-  yield_mt_per_ha numeric,
-  rainfall_mm numeric,
-  irrigation_coverage_percent numeric,
-  horticulture_area_ha numeric,
-  medicinal_plants_area_ha numeric,
-  source text,
-  recorded_year integer,
-  created_at timestamptz not null default now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  state TEXT NOT NULL DEFAULT 'Maharashtra',
+  district TEXT NOT NULL,
+  taluka TEXT,
+  season TEXT,
+  crop TEXT,
+  area_ha NUMERIC,
+  production_mt NUMERIC,
+  yield_mt_per_ha NUMERIC,
+  rainfall_mm NUMERIC,
+  irrigation_coverage_percent NUMERIC,
+  recorded_year INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_district_statistics_district ON district_statistics(district);
-CREATE INDEX IF NOT EXISTS idx_district_statistics_crop ON district_statistics(crop);
+-- ============================================
+-- 4. Market Data Management
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS market_price_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  source_type TEXT NOT NULL DEFAULT 'agmarknet',
+  source_url TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- ============================================
--- Enable Row Level Security (RLS)
+-- 5. Knowledge Base
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS scheme_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS crop_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS crops (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  common_name TEXT NOT NULL,
+  local_name TEXT,
+  scientific_name TEXT,
+  category_id UUID REFERENCES crop_categories(id) ON DELETE SET NULL,
+  climate TEXT,
+  soil_type TEXT,
+  optimal_ph_range TEXT,
+  water_requirements TEXT,
+  fertilizer_requirements TEXT,
+  planting_season TEXT,
+  harvest_time TEXT,
+  average_yield TEXT,
+  diseases TEXT[],
+  disease_management TEXT,
+  market_demand TEXT,
+  image_url TEXT,
+  source TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE (common_name, scientific_name)
+);
+
+-- ============================================
+-- 6. Advanced Field Management (Phase 1)
+-- ============================================
+
+-- Fields table for spatial farm management
+CREATE TABLE IF NOT EXISTS fields (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farmer_id UUID REFERENCES public.farmer_profiles(id) ON DELETE CASCADE,
+  field_name TEXT NOT NULL,
+  area_hectares DECIMAL NOT NULL,
+  coordinates JSONB,
+  soil_type TEXT,
+  irrigation_type TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crop cycles table for seasonal tracking
+CREATE TABLE IF NOT EXISTS crop_cycles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  field_id UUID REFERENCES public.fields(id) ON DELETE CASCADE,
+  crop_name TEXT NOT NULL,
+  variety TEXT,
+  planting_date DATE,
+  expected_harvest_date DATE,
+  actual_harvest_date DATE,
+  status TEXT, -- planning, planted, growing, harvested
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Field activities table for task tracking
+CREATE TABLE IF NOT EXISTS field_activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  crop_cycle_id UUID REFERENCES public.crop_cycles(id) ON DELETE CASCADE,
+  activity_type TEXT, -- planting, fertilizing, irrigation, harvesting
+  activity_date DATE,
+  materials_used JSONB,
+  cost DECIMAL,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- 7. IoT Sensor Infrastructure (Phase 2 - Ready for Future Implementation)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS iot_sensors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farmer_id UUID REFERENCES public.farmer_profiles(id) ON DELETE CASCADE,
+  field_id UUID REFERENCES public.fields(id) ON DELETE CASCADE,
+  sensor_type TEXT NOT NULL, -- moisture, temperature, ph, humidity, light, nitrogen
+  sensor_id TEXT UNIQUE NOT NULL,
+  sensor_model TEXT,
+  manufacturer TEXT,
+  location JSONB,
+  installation_date DATE,
+  last_maintenance DATE,
+  status TEXT DEFAULT 'inactive', -- active, inactive, maintenance, error
+  battery_level DECIMAL,
+  signal_strength DECIMAL,
+  calibration_data JSONB,
+  configuration JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sensor_readings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sensor_id UUID REFERENCES public.iot_sensors(id) ON DELETE CASCADE,
+  reading_value DECIMAL NOT NULL,
+  unit TEXT,
+  raw_data JSONB,
+  quality_score DECIMAL DEFAULT 1.0,
+  anomaly_detected BOOLEAN DEFAULT FALSE,
+  anomaly_details JSONB,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- 8. Create Indexes for Performance
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_farmer_profiles_user_id ON public.farmer_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_farmers_user_id ON public.farmers(user_id);
+CREATE INDEX IF NOT EXISTS idx_soil_analysis_farmer_id ON public.soil_analysis(farmer_id);
+CREATE INDEX IF NOT EXISTS idx_disease_reports_farmer_id ON public.disease_reports(farmer_id);
+CREATE INDEX IF NOT EXISTS idx_fields_farmer_id ON public.fields(farmer_id);
+CREATE INDEX IF NOT EXISTS idx_crop_cycles_field_id ON public.crop_cycles(field_id);
+CREATE IF NOT EXISTS idx_field_activities_crop_cycle_id ON public.field_activities(crop_cycle_id);
+CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_id ON public.sensor_readings(sensor_id);
+CREATE INDEX IF NOT EXISTS idx_sensor_readings_timestamp ON public.sensor_readings(timestamp);
+CREATE INDEX IF NOT EXISTS idx_market_prices_state ON public.market_prices(state);
+CREATE INDEX IF NOT EXISTS idx_market_prices_commodity ON public.market_prices(commodity);
+CREATE INDEX IF NOT EXISTS idx_market_prices_arrival_date ON public.market_prices(arrival_date);
+CREATE INDEX IF NOT EXISTS idx_schemes_state ON public.schemes(state);
+CREATE INDEX IF NOT EXISTS idx_cropsap_district ON public.cropsap_alerts(district);
+CREATE INDEX IF NOT EXISTS idx_district_statistics_district ON public.district_statistics(district);
+
+-- ============================================
+-- 9. Enable Row Level Security (RLS)
 -- ============================================
 
 -- Enable RLS on all tables
+ALTER TABLE public.farmer_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.farmers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.soil_analysis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.disease_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.encyclopedia ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schemes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.market_prices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crop_varieties ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.soil_analysis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.disease_reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scheme_categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE schemes_new ENABLE ROW LEVEL SECURITY;
-ALTER TABLE crop_categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE crops ENABLE ROW LEVEL SECURITY;
-ALTER TABLE farmer_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cropsap_alerts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE district_statistics ENABLE ROW LEVEL SECURITY;
-
--- Create basic RLS policies (allow public read for most tables)
-CREATE POLICY IF NOT EXISTS "Allow public read access" ON scheme_categories FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Allow public read access" ON public.schemes FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Allow public read access" ON crop_categories FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Allow public read access" ON crops FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Allow public read access" ON cropsap_alerts FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Allow public read access" ON district_statistics FOR SELECT USING (true);
+ALTER TABLE public.weather_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cropsap_alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.district_statistics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scheme_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crop_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crops ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crop_cycles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.field_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.iot_sensors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sensor_readings ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- Migration Complete!
+-- 10. Create RLS Policies
 -- ============================================
 
--- Verify tables were created
+-- Farmer-specific policies
+CREATE POLICY IF NOT EXISTS "farmers_own_profiles" ON public.farmer_profiles FOR ALL USING (auth.uid()::text = user_id);
+
+-- Admin access policies for farmers table
+CREATE POLICY IF NOT EXISTS "farmers_select_own" ON public.farmers FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY IF NOT EXISTS "farmers_insert_own" ON public.farmers FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY IF NOT EXISTS "farmers_update_own" ON public.farmers FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY IF NOT EXISTS "farmers_own_soil_analysis" ON public.soil_analysis FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.farmer_profiles
+    WHERE farmer_profiles.id = soil_analysis.farmer_id
+    AND auth.uid()::text = farmer_profiles.user_id
+  )
+);
+
+CREATE POLICY IF NOT EXISTS "farmers_own_disease_reports" ON public.disease_reports FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.farmer_profiles
+    WHERE farmer_profiles.id = disease_reports.farmer_id
+    AND auth.uid()::text = farmer_profiles.user_id
+  )
+);
+
+-- Field management policies
+CREATE POLICY IF NOT EXISTS "farmers_own_fields" ON public.fields FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.farmer_profiles
+    WHERE farmer_profiles.id = fields.farmer_id
+    AND auth.uid()::text = farmer_profiles.user_id
+  )
+);
+
+CREATE POLICY IF NOT EXISTS "farmers_own_crop_cycles" ON public.crop_cycles FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.fields
+    JOIN public.farmer_profiles ON farmer_profiles.id = fields.farmer_id
+    WHERE fields.id = crop_cycles.field_id
+    AND auth.uid()::text = farmer_profiles.user_id
+  )
+);
+
+CREATE POLICY IF NOT EXISTS "farmers_own_field_activities" ON public.field_activities FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.crop_cycles
+    JOIN public.fields ON fields.id = crop_cycles.field_id
+    JOIN public.farmer_profiles ON farmer_profiles.id = fields.farmer_id
+    WHERE crop_cycles.id = field_activities.crop_cycle_id
+    AND auth.uid()::text = farmer_profiles.user_id
+  )
+);
+
+-- IoT sensor policies
+CREATE POLICY IF NOT EXISTS "farmers_own_iot_sensors" ON public.iot_sensors FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.farmer_profiles
+    WHERE farmer_profiles.id = iot_sensors.farmer_id
+    AND auth.uid()::text = farmer_profiles.user_id
+  )
+);
+
+CREATE POLICY IF NOT EXISTS "farmers_own_sensor_readings" ON public.sensor_readings FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.iot_sensors
+    WHERE iot_sensors.id = sensor_readings.sensor_id
+    AND iot_sensors.farmer_id IN (
+      SELECT id FROM public.farmer_profiles WHERE auth.uid()::text = user_id
+    )
+  )
+);
+
+-- Public read policies
+CREATE POLICY IF NOT EXISTS "public_read_encyclopedia" ON public.encyclopedia FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_schemes" ON public.schemes FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_market_prices" ON public.market_prices FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_weather_data" ON public.weather_data FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_cropsap_alerts" ON public.cropsap_alerts FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_district_statistics" ON public.district_statistics FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_scheme_categories" ON public.scheme_categories FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_crop_categories" ON public.crop_categories FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS "public_read_crops" ON public.crops FOR SELECT USING (true);
+
+-- ============================================
+-- 11. Create Update Timestamp Function
+-- ============================================
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers for automatic timestamp updates
+CREATE TRIGGER update_farmer_profiles_updated_at BEFORE UPDATE ON public.farmer_profiles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_soil_analysis_updated_at BEFORE UPDATE ON public.soil_analysis
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_schemes_updated_at BEFORE UPDATE ON public.schemes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_fields_updated_at BEFORE UPDATE ON public.fields
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_crop_cycles_updated_at BEFORE UPDATE ON public.crop_cycles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_iot_sensors_updated_at BEFORE UPDATE ON public.iot_sensors
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 12. Migration Complete Verification
+-- ============================================
+
 DO $$
 DECLARE
   table_count INTEGER;
+  important_tables TEXT[] := ARRAY[
+    'farmer_profiles', 'soil_analysis', 'disease_reports',
+    'fields', 'crop_cycles', 'field_activities',
+    'encyclopedia', 'schemes', 'market_prices',
+    'cropsap_alerts', 'district_statistics',
+    'crop_categories', 'crops', 'iot_sensors', 'sensor_readings'
+  ];
 BEGIN
   SELECT COUNT(*) INTO table_count
   FROM information_schema.tables
   WHERE table_schema = 'public'
-    AND table_name IN (
-      'scheme_categories', 'schemes', 'crop_categories', 'crops',
-      'cropsap_alerts', 'district_statistics', 'farmer_profiles'
-    );
-  
-  RAISE NOTICE 'Created % required tables. Run seed scripts now!', table_count;
+    AND table_name = ANY(important_tables);
+
+  RAISE NOTICE 'Successfully created % AgriSmart database tables!', table_count;
+  RAISE NOTICE 'Database is now ready for the application!';
+
+  -- Create some sample scheme categories if empty
+  IF NOT EXISTS (SELECT 1 FROM scheme_categories LIMIT 1) THEN
+    INSERT INTO scheme_categories (name, description) VALUES
+    ('Crop Insurance', 'Insurance schemes for crop protection against natural calamities'),
+    ('Credit Facilities', 'Agricultural loans and credit facilities for farmers'),
+    ('Subsidies', 'Direct subsidy schemes for farmers on agricultural inputs'),
+    ('Technology', 'Schemes promoting agricultural technology and modernization'),
+    ('Market Support', 'Price support and market development schemes');
+  END IF;
 END $$;
 
