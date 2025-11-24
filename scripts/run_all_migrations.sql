@@ -334,6 +334,7 @@ CREATE INDEX IF NOT EXISTS idx_district_statistics_district ON public.district_s
 
 -- Enable RLS on all tables
 ALTER TABLE public.farmer_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.farmers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.soil_analysis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.disease_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.encyclopedia ENABLE ROW LEVEL SECURITY;
