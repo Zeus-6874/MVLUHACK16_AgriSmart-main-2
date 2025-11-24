@@ -40,16 +40,14 @@ export async function POST(request: NextRequest) {
         {
           user_id: userId,
           full_name: payload.full_name,
-          phone: payload.phone,
-          email: payload.email,
-          state: payload.state,
-          district: payload.district,
-          land_area: payload.land_area ? Number(payload.land_area) : null,
-          land_unit: payload.land_unit,
+          contact_number: payload.phone || payload.contact_number,
+          location: payload.district ? `${payload.district}, ${payload.state || ""}`.trim() : payload.location,
+          land_size: payload.land_area ? Number(payload.land_area) : null,
           primary_crop: payload.primary_crop,
-          experience_years: payload.experience_years ? Number(payload.experience_years) : null,
-          preferred_language: payload.preferred_language,
-          irrigation: payload.irrigation,
+          irrigation_method: payload.irrigation || payload.irrigation_method,
+          // Additional fields for compatibility
+          farm_name: payload.farm_name,
+          // Store extra data in a JSON field if available, or ignore for now
         },
         { onConflict: "user_id" },
       )
