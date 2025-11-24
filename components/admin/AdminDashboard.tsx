@@ -885,11 +885,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="crop_name">{language === "hi" ? "फसल का नाम" : "Crop Name"} *</Label>
+                              <Label htmlFor="commodity">{language === "hi" ? "फसल का नाम" : "Commodity Name"} *</Label>
                               <Input
-                                id="crop_name"
-                                value={newMarketPrice.crop_name}
-                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, crop_name: e.target.value })}
+                                id="commodity"
+                                value={newMarketPrice.commodity}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, commodity: e.target.value })}
                                 placeholder={language === "hi" ? "जैसे: चावल" : "e.g., Rice"}
                               />
                             </div>
@@ -905,27 +905,57 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                               />
                             </div>
                           </div>
-                          <div>
-                            <Label htmlFor="price_per_kg">
-                              {language === "hi" ? "मूल्य प्रति किलो (₹)" : "Price per Kg (₹)"} *
-                            </Label>
-                            <Input
-                              id="price_per_kg"
-                              type="number"
-                              step="0.01"
-                              value={newMarketPrice.price_per_kg}
-                              onChange={(e) => setNewMarketPrice({ ...newMarketPrice, price_per_kg: e.target.value })}
-                              placeholder="0.00"
-                            />
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <Label htmlFor="min_price">
+                                {language === "hi" ? "न्यूनतम मूल्य (₹)" : "Min Price (₹)"}
+                              </Label>
+                              <Input
+                                id="min_price"
+                                type="number"
+                                step="0.01"
+                                value={newMarketPrice.min_price}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, min_price: e.target.value })}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="modal_price">
+                                {language === "hi" ? "मुख्य मूल्य (₹)" : "Modal Price (₹)"} *
+                              </Label>
+                              <Input
+                                id="modal_price"
+                                type="number"
+                                step="0.01"
+                                value={newMarketPrice.modal_price}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, modal_price: e.target.value })}
+                                placeholder="0.00"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="max_price">
+                                {language === "hi" ? "अधिकतम मूल्य (₹)" : "Max Price (₹)"}
+                              </Label>
+                              <Input
+                                id="max_price"
+                                type="number"
+                                step="0.01"
+                                value={newMarketPrice.max_price}
+                                onChange={(e) => setNewMarketPrice({ ...newMarketPrice, max_price: e.target.value })}
+                                placeholder="0.00"
+                              />
+                            </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="state">{language === "hi" ? "राज्य" : "State"}</Label>
+                              <Label htmlFor="state">{language === "hi" ? "राज्य" : "State"} *</Label>
                               <Input
                                 id="state"
                                 value={newMarketPrice.state}
                                 onChange={(e) => setNewMarketPrice({ ...newMarketPrice, state: e.target.value })}
-                                placeholder={language === "hi" ? "जैसे: दिल्ली" : "e.g., Delhi"}
+                                placeholder={language === "hi" ? "जैसे: महाराष्ट्र" : "e.g., Maharashtra"}
+                                required
                               />
                             </div>
                             <div>
@@ -934,7 +964,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                                 id="district"
                                 value={newMarketPrice.district}
                                 onChange={(e) => setNewMarketPrice({ ...newMarketPrice, district: e.target.value })}
-                                placeholder={language === "hi" ? "जैसे: नई दिल्ली" : "e.g., New Delhi"}
+                                placeholder={language === "hi" ? "जैसे: पुणे" : "e.g., Pune"}
                               />
                             </div>
                           </div>
