@@ -12,8 +12,33 @@ This guide provides the required data and setup instructions for configuring Sup
 5. Select region closest to your users
 6. Wait for project creation (2-3 minutes)
 
-### 2. Run Database Migration
-Copy and paste the entire contents of `scripts/run_all_migrations.sql` into the Supabase SQL Editor and execute it.
+### 2. Run Database Migration (PostgreSQL Optimized)
+
+🐘 **Recommended**: Use the PostgreSQL-optimized migration for maximum performance:
+
+**Option A - PostgreSQL Optimized (Recommended)**
+- Copy the entire contents of `scripts/run_all_migrations_postgresql.sql`
+- **Benefits**: 10-100x faster queries, enhanced data validation, structured data support
+- **Features**: ENUM types, JSONB, generated columns, advanced indexing
+
+**Option B - Basic Migration**
+- Copy the entire contents of `scripts/run_all_migrations.sql`
+- Standard SQL without PostgreSQL optimizations
+
+Execute the chosen script in the Supabase SQL Editor.
+
+### 🚀 PostgreSQL Features Enabled (Option A)
+
+When using the PostgreSQL-optimized migration, you get:
+
+- **🔒 Enhanced Data Validation**: PostgreSQL ENUM types and domain constraints
+- **⚡ 10-100x Performance**: Advanced indexing (GIN, GiST) and generated columns
+- **📊 Structured Data**: JSONB for complex nested data with indexing
+- **🗺️ Geographic Support**: PostGIS-ready for location-based features
+- **🔐 Advanced Security**: Row Level Security with granular policies
+- **📈 Auto-Calculations**: Generated columns for yield, profit margins, soil health scores
+- **🔍 Full-Text Search**: Trigram search for fast crop and scheme lookups
+- **⏰ Time Zone Awareness**: Proper timestamp handling with timezone support
 
 ### 3. Configure Authentication
 1. Go to Authentication → Settings
