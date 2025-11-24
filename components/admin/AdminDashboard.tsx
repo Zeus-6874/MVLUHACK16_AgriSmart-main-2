@@ -121,9 +121,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     harvest_time: "",
   })
   const [newMarketPrice, setNewMarketPrice] = useState({
-    crop_name: "",
+    commodity: "",
     market_name: "",
-    price_per_kg: "",
+    modal_price: "",
+    min_price: "",
+    max_price: "",
     state: "",
     district: "",
   })
